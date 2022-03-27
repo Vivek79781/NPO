@@ -1,0 +1,118 @@
+const express = require('express');
+const router = express.Router();
+const User = require("../models/user")
+const Food = require('../models/food');
+const multer = require('multer');
+const { storage } = require('../cloudinary');
+const upload = multer({ storage });
+const catchAsync = require('../utils/catchAsync');
+
+
+router.get('/',async (req,res) => {
+    const restaurants = await User.find({ roles : 'restaurant'})
+    res.render('restaurants/index',{restaurants});
+})
+
+router.get('/:id', async(req,res) => {
+    const restaurant = await User.findById(req.params.id).populate({
+        path: 'cart',
+        populate: {
+            path: 'food'
+        }
+    })
+    if(restaurant.roles != 'restaurant')
+    {
+        req.flash('error','Invalid ID')
+        res.redirect('/restaurants');
+        return;
+    }
+    res.render('restaurants/showmenu',{restaurant})
+})
+
+router.get('/:id/add', async (req,res) => {
+    res.render('restaurants/addFood');
+})
+
+router.post('/:id',upload.single('image'), catchAsync(async (req,res) => {
+    const { name,count,price,description } = req.body
+    const food = new Food({ name,count,price,description })
+    if(req.file) {
+        food.image = {
+            url: req.file.path,
+            filename: req.file.filename
+        }
+    }
+    food.restaurant = req.params.id;
+    const restaurant = await User.findById(req.params.id);
+    const cart = {
+        food: food._id,
+        count: 0
+    }
+    restaurant.cart.unshift(cart)
+    await restaurant.save()
+    await food.save();
+    res.redirect(`/restaurants/${restaurant._id}`)
+}))
+
+router.get('/:id/:foodid/edit', async(req,res) => {
+    const food = await Food.findById(req.params.foodid)
+    res.render('restaurants/editFood',{food})
+})
+
+router.put('/:id/:foodid', async (req,res) => {
+    const {price,count,description} = req.body
+    const food = await Food.findById(req.params.foodid)
+    food.price = price
+    food.description = description
+    food.count = count
+    await food.save()
+    res.redirect(`/restaurants/${req.params.id}`);
+})
+
+router.post('/:foodid/add',async (req,res) => {
+    const food = await Food.findById(req.params.foodid).populate('restaurant') 
+    if(!req.user)
+        req.flash('error',"User Must LOGGED IN")
+    else {
+        const user = await User.findById(req.user._id);
+        const index = user.cart.findIndex((element) => {
+            return element.food.equals(req.params.foodid)
+        })
+        if(index === -1){
+            const cartFood = {
+                food: food._id,
+                count: req.body.count
+            }
+            user.cart.unshift(cartFood);
+        } else {
+            user.cart[index].count += parseInt(req.body.count)
+        }
+        await user.save()
+        food.count = food.count - req.body.count
+        await food.save()
+    }
+    res.redirect(`/restaurants/${food.restaurant._id}`)
+})
+
+router.delete('/:id/:foodid', async(req,res) => {
+    const {id ,foodid} = req.params;
+    if(!req.user) {
+        req.flash('error',"User Must LOGGED IN")
+        res.redirect('/login')
+    } else if(!req.user._id.equals(id)) {
+        req.flash('error',"User is not Authorized")
+        res.redirect('/login')
+    } else {
+        const restaurant = await User.findById(id)
+        const menu = restaurant.cart.filter(c => {
+            if(!c.food.equals(foodid))
+                return c
+        })
+        restaurant.cart = menu
+        await restaurant.save()
+        await Food.findByIdAndDelete(foodid)
+        res.redirect(`/restaurants/${id}`)
+    }
+})
+
+module.exports = router;

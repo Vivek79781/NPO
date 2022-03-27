@@ -1,0 +1,33 @@
+<% layout('layouts/boilerplate')%>
+<div class="container">
+  <h1>All Restaurants</h1>
+
+  <% for (let restaurant of restaurants){%>
+  <div class="card mb-3">
+    <div class="row">
+      <div class="col-md-4">
+        <%if(restaurant.image) {%>
+        <img class="img-fluid" alt="" src="<%=restaurant.image.url%>" />
+        <% }else {%>
+        <img
+          class="img-fluid"
+          alt=""
+          src="https://acadianakarate.com/wp-content/uploads/2017/04/default-image-620x600.jpg"
+        />
+        <% } %>
+      </div>
+      <div class="col-md-8">
+        <div class="card-body">
+          <h5 class="card-title"><%= restaurant.username %></h5>
+          <p class="card-text">
+            <small class="text-muted"><%= restaurant.location%></small>
+          </p>
+          <a class="btn btn-primary" href="/restaurants/<%=restaurant._id%>"
+            >View <%=restaurant.username%></a
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+  <% }%>
+</div>
