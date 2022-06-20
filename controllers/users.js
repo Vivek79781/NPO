@@ -35,6 +35,8 @@ module.exports.register = async (req, res, next) => {
                 let time = today.getHours() + ":" + today.getMinutes();
                 if(today.getMinutes() <= 9)
                     time = today.getHours() + ":0" + today.getMinutes();
+                if(today.getHours() <= 9)
+                    time = "0" + time
                 if(start<=time && time<=end){
                     const userfind=await User.findById(req.user._id);
                     userfind.isOpen=true;
@@ -56,6 +58,8 @@ module.exports.register = async (req, res, next) => {
                 let time = today.getHours() + ":" + today.getMinutes();
                 if(today.getMinutes() <= 9)
                     time = today.getHours() + ":0" + today.getMinutes();
+                if(today.getHours() <= 9)
+                    time = "0" + time
                 if(start<=time && time<=end){
                     const userfind=await User.findById(req.user._id);
                     userfind.isOpen=true;
